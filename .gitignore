@@ -1,0 +1,7 @@
+# Local environment settings
+.env
+.env.*
+!.env.example
+
+# OS files
+.DS_Store
