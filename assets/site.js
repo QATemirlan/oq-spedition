@@ -130,6 +130,99 @@
     group.addEventListener('keydown', event => { if (event.key === 'Escape') { setOpen(false); trigger.focus(); } });
   });
   const query = new URLSearchParams(location.search);
+  const tariffRoutes = window.OQ_TARIFF_ROUTES || [];
+  const tariffCities = window.OQ_TARIFF_CITIES || [];
+  const tariffLimits = window.OQ_TARIFF_LIMITS || [1.5, 3, 5, 7, 10, 20];
+  const tariffCityName = slug => tariffCities.find(item => item.slug === slug)?.city || slug;
+  const tariffRoute = (fromSlug, toSlug) => tariffRoutes.find(item => item.from_slug === fromSlug && item.to_slug === toSlug);
+  const tariffVehicle = limit => {
+    if (limit <= 1.5) return 'Газель до 1,5 т';
+    if (limit <= 3) return 'Газель до 3 т';
+    if (limit <= 5) return 'Грузовик до 5 т';
+    if (limit <= 10) return 'Грузовик до 10 т';
+    return 'Фура до 20 т';
+  };
+  const selectTariffCategory = weightKg => {
+    const tons = Number(weightKg) / 1000;
+    if (!Number.isFinite(tons) || tons <= 0) return null;
+    return tariffLimits.find(limit => tons <= limit) || null;
+  };
+  const calculateTariff = (fromSlug, toSlug, weightKg) => {
+    const route = tariffRoute(fromSlug, toSlug);
+    const category = selectTariffCategory(weightKg);
+    if (!route || !category) return { route, category, price: null, vehicle: null };
+    for (const limit of tariffLimits) {
+      const price = route.prices?.[String(limit)];
+      if (limit >= category && price) return { route, category: limit, price, vehicle: tariffVehicle(limit) };
+    }
+    return { route, category, price: null, vehicle: null };
+  };
+  document.querySelectorAll('[data-tariff-form]').forEach(form => form.addEventListener('submit', event => {
+    event.preventDefault();
+    const fields = new FormData(form);
+    const fromSlug = fields.get('from');
+    const toSlug = fields.get('to');
+    const weight = Number(fields.get('weight'));
+    const status = form.querySelector('[data-tariff-status]');
+    if (!fromSlug || !toSlug) {
+      if (status) status.textContent = 'Выберите город отправления и назначения.';
+      return;
+    }
+    if (fromSlug === toSlug) {
+      if (status) status.textContent = 'Выберите разные города.';
+      return;
+    }
+    if (!Number.isFinite(weight) || weight <= 0) {
+      if (status) status.textContent = 'Укажите вес числом больше нуля.';
+      return;
+    }
+    if (status) status.textContent = 'Открываем расчёт...';
+    const params = new URLSearchParams({ weight: String(Math.round(weight)) });
+    ['cargo_type', 'dimensions', 'urgency', 'loading', 'unloading'].forEach(name => {
+      const value = fields.get(name);
+      if (value) params.set(name, value);
+    });
+    location.href = `${sitePath(`/tarify/raschet/${fromSlug}-${toSlug}/`)}?${params.toString()}`;
+  }));
+  const tariffSearch = document.querySelector('#tariffSearch');
+  const tariffRows = Array.from(document.querySelectorAll('.tariff-main-table tbody tr'));
+  const tariffEmpty = document.querySelector('#tariffEmpty');
+  let tariffDirection = 'all';
+  function filterTariffs() {
+    if (!tariffRows.length) return;
+    const text = (tariffSearch?.value || '').trim().toLowerCase();
+    let visible = 0;
+    tariffRows.forEach(row => {
+      const directionOk = tariffDirection === 'all' || row.dataset.direction === tariffDirection;
+      const searchOk = !text || (row.dataset.city || '').includes(text);
+      const show = directionOk && searchOk;
+      row.hidden = !show;
+      if (show) visible += 1;
+    });
+    if (tariffEmpty) tariffEmpty.hidden = visible !== 0;
+  }
+  if (tariffSearch) tariffSearch.addEventListener('input', filterTariffs);
+  document.querySelectorAll('[data-tariff-direction]').forEach(button => button.addEventListener('click', () => {
+    tariffDirection = button.dataset.tariffDirection;
+    document.querySelectorAll('[data-tariff-direction]').forEach(item => item.classList.toggle('active', item === button));
+    filterTariffs();
+  }));
+  const resultBox = document.querySelector('[data-tariff-result]');
+  if (resultBox && window.OQ_RESULT_ROUTE) {
+    const weight = Number(query.get('weight'));
+    const fromSlug = window.OQ_RESULT_ROUTE.from_slug;
+    const toSlug = window.OQ_RESULT_ROUTE.to_slug;
+    const routeName = `${tariffCityName(fromSlug)} → ${tariffCityName(toSlug)}`;
+    if (!Number.isFinite(weight) || weight <= 0) {
+      resultBox.innerHTML = '<strong>Некорректный вес</strong><p>Укажите вес в URL числом больше нуля, например <code>?weight=500</code>.</p>';
+    } else {
+      const calc = calculateTariff(fromSlug, toSlug, weight);
+      const price = calc.price ? `${money(calc.price)} ₸` : 'Рассчитаем стоимость индивидуально';
+      const vehicle = calc.vehicle || calc.route?.vehicle || 'подберём после заявки';
+      const delivery = calc.route?.delivery_time || 'по согласованию';
+      resultBox.innerHTML = `<dl><dt>Маршрут</dt><dd>${routeName}</dd><dt>Вес</dt><dd>${money(weight)} кг</dd><dt>Стоимость</dt><dd>${price}</dd><dt>Срок доставки</dt><dd>${delivery}</dd><dt>Рекомендуемый автомобиль</dt><dd>${vehicle}</dd></dl><div class="tariff-included"><b>Что входит в стоимость</b><span>Подбор транспорта</span><span>Маршрутный расчёт</span><span>Подача машины после согласования</span><span>Сопровождение менеджера</span></div><p class="small-note">Расчёт предварительный. Финальная ставка зависит от габаритов, адресов, режима загрузки, срочности и доступности транспорта.</p>`;
+    }
+  }
   if (quickRoute && query.has('route')) quickRoute.value = query.get('route');
   if (quickVehicle && query.has('vehicle')) quickVehicle.value = `${query.get('vehicle')}; ${query.get('body') || ''}`;
   document.querySelectorAll('.quote-form').forEach(form => form.addEventListener('submit', event => {
@@ -138,7 +231,14 @@
     const text = `Здравствуйте, OQ SPEDITION!\n\nПрошу рассчитать перевозку.\nМаршрут: ${fields.get('route')}\nМашина: ${fields.get('vehicle') || 'нужно подобрать'}\nГруз: ${fields.get('cargo')}\nКонтакт: ${fields.get('contact')}`;
     location.href = `mailto:logistics@oqspedition.kz?subject=${encodeURIComponent('Запрос на перевозку: ' + fields.get('route'))}&body=${encodeURIComponent(text)}`;
   }));
-  document.querySelectorAll('.landing-form').forEach(form => form.addEventListener('submit', event => {
+  document.querySelectorAll('[data-tariff-request]').forEach(form => form.addEventListener('submit', event => {
+    event.preventDefault();
+    const fields = new FormData(form);
+    const route = window.OQ_RESULT_ROUTE ? `${window.OQ_RESULT_ROUTE.from} → ${window.OQ_RESULT_ROUTE.to}` : document.querySelector('h1')?.textContent?.replace(/\s+/g, ' ') || 'тарифный маршрут';
+    const text = `Здравствуйте, OQ SPEDITION!\n\nПрошу подготовить точный расчёт.\nМаршрут: ${route}\nИмя: ${fields.get('name') || 'не указано'}\nТелефон: ${fields.get('phone')}\nГруз: ${fields.get('cargo')}`;
+    location.href = `mailto:logistics@oqspedition.kz?subject=${encodeURIComponent('Точный расчёт тарифа: ' + route)}&body=${encodeURIComponent(text)}`;
+  }));
+  document.querySelectorAll('.landing-form:not([data-tariff-request])').forEach(form => form.addEventListener('submit', event => {
     event.preventDefault();
     const fields = new FormData(form);
     const route = window.OQ_PAGE_ROUTE ? `${window.OQ_PAGE_ROUTE.from} → ${window.OQ_PAGE_ROUTE.to}` : 'маршрут со страницы';

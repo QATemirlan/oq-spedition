@@ -2,12 +2,27 @@
 """Generate the static OQ SPEDITION Kazakhstan freight website."""
 from html import escape
 from pathlib import Path
+import csv
 import json
 import re
 from route_data import CITIES_INFO, SEASONAL, TRANSPORT, PREPARE, QUESTIONS, ROAD_CHECK_INFO
 
 ROOT = Path(__file__).parent
 SITE_PREFIX = '/oq-spedition'
+TARIFF_WEIGHT_LIMITS = (1.5, 3, 5, 7, 10, 20)
+TARIFF_PRICE_KEYS = {
+    1.5: 'weight_1_5t_kzt',
+    3: 'weight_3t_kzt',
+    5: 'weight_5t_kzt',
+    7: 'weight_7t_kzt',
+    10: 'weight_10t_kzt',
+    20: 'weight_20t_kzt',
+}
+TARIFF_CITY_ALIASES = {
+    'Алма-Ата': 'Алматы',
+    'Астану': 'Астана',
+}
+TARIFF_MANUAL = 'Рассчитаем стоимость индивидуально'
 ROUTES = [
     ('Актау','aktau',2880,1080000,375,'3–4 дня'),('Актобе','aktobe',2185,720000,330,'2–3 дня'),
     ('Астана','astana',1200,400000,333,'1–2 дня'),('Атырау','atyrau',2850,940000,330,'3–4 дня'),
@@ -55,6 +70,90 @@ base='https://oqspedition.kz'
 CITY_LIST=[('Алматы','almaty')]+[(r[0],r[1]) for r in ROUTES]
 CITY_BY_SLUG={slug:city for city,slug in CITY_LIST}
 CITY_SLUG={city:slug for city,slug in CITY_LIST}
+def normalize_tariff_city(city):
+    return TARIFF_CITY_ALIASES.get((city or '').strip(), (city or '').strip())
+def slugify(value):
+    value=normalize_tariff_city(value).lower().replace('ё','e')
+    table=str.maketrans({'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ж':'zh','з':'z','и':'i','й':'j','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'c','ч':'ch','ш':'sh','щ':'shh','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya'})
+    result=value.translate(table)
+    result=re.sub(r'[^a-z0-9]+','-',result).strip('-')
+    return result or 'route'
+def parse_price(value):
+    value=(value or '').strip()
+    if not value:
+        return None
+    return int(float(value.replace(',','.')))
+def tariff_vehicle(limit):
+    if limit <= 1.5:
+        return 'Газель до 1,5 т'
+    if limit <= 3:
+        return 'Газель до 3 т'
+    if limit <= 5:
+        return 'Грузовик до 5 т'
+    if limit <= 10:
+        return 'Грузовик до 10 т'
+    return 'Фура до 20 т'
+def route_delivery_time(origin, destination):
+    origin=normalize_tariff_city(origin); destination=normalize_tariff_city(destination)
+    if origin == destination:
+        return None
+    for city,slug,km,price,rate,time in ROUTES:
+        if (origin == 'Алматы' and destination == city) or (destination == 'Алматы' and origin == city):
+            return time
+    if origin == 'Астана' or destination == 'Астана':
+        return '1–3 дня'
+    return 'по согласованию'
+def load_tariffs():
+    rows=[]; seen=set()
+    csv_path=ROOT/'data'/'tariffs_kz.csv'
+    with csv_path.open(encoding='utf-8-sig',newline='') as handle:
+        for raw in csv.DictReader(handle):
+            origin=normalize_tariff_city(raw['origin']); destination=normalize_tariff_city(raw['destination'])
+            if not origin or not destination or origin == destination:
+                continue
+            prices={limit:parse_price(raw.get(key,'')) for limit,key in TARIFF_PRICE_KEYS.items()}
+            if not any(prices.values()):
+                continue
+            key=(origin,destination)
+            if key in seen:
+                continue
+            seen.add(key)
+            available_limits=[limit for limit,price in prices.items() if price]
+            vehicle=tariff_vehicle(max(available_limits) if available_limits else 20)
+            rows.append({'from':origin,'to':destination,'from_slug':slugify(origin),'to_slug':slugify(destination),'slug':f'{slugify(origin)}-{slugify(destination)}','prices':prices,'delivery_time':route_delivery_time(origin,destination),'vehicle':vehicle,'available':True})
+    return rows
+TARIFF_ROUTES=load_tariffs()
+TARIFF_ROUTE_MAP={(r['from_slug'],r['to_slug']):r for r in TARIFF_ROUTES}
+TARIFF_CITIES=sorted({r['from'] for r in TARIFF_ROUTES}|{r['to'] for r in TARIFF_ROUTES})
+TARIFF_CITY_OPTIONS=[(city,slugify(city)) for city in TARIFF_CITIES]
+def select_weight_category(weight_kg):
+    """Return the smallest tariff category that can carry weight_kg.
+
+    Weight is entered in kilograms and converted to tons. Example: 500 kg ->
+    0.5 t, so the function selects the 1.5 t category. If a route has no price
+    for that category, calculate_tariff uses the next available larger category.
+    """
+    try:
+        tons=float(weight_kg)/1000
+    except (TypeError,ValueError):
+        return None
+    if tons <= 0:
+        return None
+    for limit in TARIFF_WEIGHT_LIMITS:
+        if tons <= limit:
+            return limit
+    return None
+def find_tariff(origin_slug,destination_slug):
+    return TARIFF_ROUTE_MAP.get((origin_slug,destination_slug))
+def calculate_tariff(origin_slug,destination_slug,weight_kg):
+    route=find_tariff(origin_slug,destination_slug)
+    category=select_weight_category(weight_kg)
+    if not route or category is None:
+        return {'route':route,'category':category,'price':None,'vehicle':None}
+    for limit in TARIFF_WEIGHT_LIMITS:
+        if limit >= category and route['prices'].get(limit):
+            return {'route':route,'category':limit,'price':route['prices'][limit],'vehicle':tariff_vehicle(limit)}
+    return {'route':route,'category':category,'price':None,'vehicle':None}
 def city_path(origin_slug,dest_slug): return f'/gruzoperevozki/mezhgorod/{origin_slug}-{dest_slug}/'
 NAV_ITEMS=[
     ('Грузоперевозки','/gruzoperevozki/',[
@@ -63,6 +162,7 @@ NAV_ITEMS=[
     ]),
     ('Автопарк','/avtopark/',[(v['label'],f'/avtopark/{v["id"]}/') for v in VEHICLES]),
     ('Направления','/gruzoperevozki/mezhgorod/',[(city,city_path('almaty',slug)) for city,slug in CITY_LIST[1:9]]),
+    ('Тарифы','/tarify/',[('Рассчитать стоимость','/tarify/#calculator'),('Тарифы в Астану','/tarify/#astana-tariffs'),('Алматы — Астана','/tarify/almaty-astana/')]),
     ('Бизнесу','/biznes/',[('Логистика для бизнеса','/biznes/'),('Автопарк','/avtopark/'),('Цены','/ceny/')])
 ]
 def make_nav():
@@ -75,7 +175,7 @@ def make_nav():
     return ''.join(groups)
 nav=make_nav()
 def head(title,description,path):
-     return f'''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101b28"><meta name="description" content="{escape(description, quote=True)}"><link rel="canonical" href="{base}{path}"><meta property="og:type" content="website"><meta property="og:title" content="{escape(title)}"><meta property="og:description" content="{escape(description)}"><title>{escape(title)}</title><link rel="stylesheet" href="/assets/site.css"><link rel="stylesheet" href="/assets/route.css"><link rel="stylesheet" href="/assets/interactions.css"><link rel="stylesheet" href="/assets/mobile.css"><script>window.OQ_BASE_PATH={json.dumps(SITE_PREFIX)};</script><script src="/routes.js" defer></script><script src="/assets/site.js" defer></script></head><body><header class="header"><div class="container header-inner"><a class="brand brand-logo" href="/"><img src="/assets/logo.svg" alt="OQ SPEDITION"></a><button class="mobile-nav-toggle" id="mobileNavToggle" aria-expanded="false" aria-controls="siteNav">Меню ☰</button><nav id="siteNav" aria-label="Основная навигация">{nav}<a class="button nav-quote" href="/#quote">Рассчитать</a></nav></div></header>'''
+     return f'''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101b28"><meta name="description" content="{escape(description, quote=True)}"><link rel="canonical" href="{base}{path}"><meta property="og:type" content="website"><meta property="og:title" content="{escape(title)}"><meta property="og:description" content="{escape(description)}"><title>{escape(title)}</title><link rel="stylesheet" href="/assets/site.css"><link rel="stylesheet" href="/assets/route.css"><link rel="stylesheet" href="/assets/tariffs.css"><link rel="stylesheet" href="/assets/interactions.css"><link rel="stylesheet" href="/assets/mobile.css"><script>window.OQ_BASE_PATH={json.dumps(SITE_PREFIX)};</script><script src="/routes.js" defer></script><script src="/assets/tariffs.js" defer></script><script src="/assets/site.js" defer></script></head><body><header class="header"><div class="container header-inner"><a class="brand brand-logo" href="/"><img src="/assets/logo.svg" alt="OQ SPEDITION"></a><button class="mobile-nav-toggle" id="mobileNavToggle" aria-expanded="false" aria-controls="siteNav">Меню ☰</button><nav id="siteNav" aria-label="Основная навигация">{nav}<a class="button nav-quote" href="/#quote">Рассчитать</a></nav></div></header>'''
 def footer():
      return '''<footer class="footer"><div class="container footer-grid"><div><a class="brand brand-logo" href="/"><img src="/assets/logo.svg" alt="OQ SPEDITION"></a><p>Транспортная логистика по Казахстану.</p></div><div><b>Связаться</b><p><a href="tel:+77088462330">+7 708 846 23 30</a></p><p><a href="mailto:logistics@oqspedition.kz">logistics@oqspedition.kz</a></p></div><div><b>Навигация</b><p><a href="/gruzoperevozki/mezhgorod/">Направления и тарифы</a></p><p><a href="/uslugi/">Услуги</a></p></div></div></footer></body></html>'''
 def route_url(slug,reverse=False): return f'/gruzoperevozki/mezhgorod/{slug}-almaty/' if reverse else f'/gruzoperevozki/mezhgorod/almaty-{slug}/'
@@ -111,7 +211,71 @@ route_js = '/* Маршрутные тарифы по согласованным
 route_js += 'window.OQ_CITIES = ' + json.dumps([{'city':c,'slug':s} for c,s in CITY_LIST],ensure_ascii=False,indent=2) + ';\n'
 write(Path('routes.js'),route_js)
 
+tariff_js='window.OQ_TARIFF_CITIES = ' + json.dumps([{'city':city,'slug':slug} for city,slug in TARIFF_CITY_OPTIONS],ensure_ascii=False,indent=2) + ';\n'
+tariff_js+='window.OQ_TARIFF_ROUTES = ' + json.dumps([{'from':r['from'],'to':r['to'],'from_slug':r['from_slug'],'to_slug':r['to_slug'],'slug':r['slug'],'prices':{str(k):v for k,v in r['prices'].items()},'delivery_time':r['delivery_time'],'vehicle':r['vehicle'],'available':r['available']} for r in TARIFF_ROUTES],ensure_ascii=False,indent=2) + ';\n'
+tariff_js+='window.OQ_TARIFF_LIMITS = ' + json.dumps(TARIFF_WEIGHT_LIMITS,ensure_ascii=False) + ';\n'
+write(Path('assets/tariffs.js'),tariff_js)
+
 def shell(title,description,path,body): return head(title,description,path)+'<main>'+body+'</main>'+footer()
+
+def money(value):
+    return TARIFF_MANUAL if value is None else f'{fmt(value)} ₸'
+
+def tariff_select_options(selected_slug=None):
+    return ''.join(f'<option value="{slug}"{" selected" if slug == selected_slug else ""}>{escape(city)}</option>' for city,slug in TARIFF_CITY_OPTIONS)
+
+def tariff_calculator(title='Рассчитать стоимость', route=None, compact=False):
+    selected_from=route['from_slug'] if route else 'almaty'
+    selected_to=route['to_slug'] if route else 'astana'
+    return f'''<section class="section tariff-calculator" id="calculator"><div class="container"><div class="tariff-calc-panel"><div><p class="eyebrow">ТАРИФНЫЙ КАЛЬКУЛЯТОР</p><h2>{escape(title)}</h2><p class="muted">Выберите маршрут и точный вес груза. После нажатия кнопки откроется отдельная страница предварительного расчёта.</p></div><form class="tariff-form" data-tariff-form><div class="tariff-form-grid"><label class="field">Город отправления<select name="from" required>{tariff_select_options(selected_from)}</select></label><label class="field">Город назначения<select name="to" required>{tariff_select_options(selected_to)}</select></label><label class="field">Вес, кг<input name="weight" type="number" min="1" step="1" placeholder="500" required></label><label class="field">Тип груза<select name="cargo_type"><option value="">Не выбран</option><option>Паллеты и коробки</option><option>Оборудование</option><option>Стройматериалы</option><option>Температурный груз</option><option>Личные вещи</option></select></label><label class="field">Габариты<input name="dimensions" placeholder="например 120×80×100 см"></label><label class="field">Срочность<select name="urgency"><option value="standard">Стандартная доставка</option><option value="urgent">Срочно</option></select></label><label class="field">Загрузка<select name="loading"><option value="none">Без услуги</option><option value="need">Нужна помощь</option></select></label><label class="field">Разгрузка<select name="unloading"><option value="none">Без услуги</option><option value="need">Нужна помощь</option></select></label></div><div class="tariff-actions"><button class="button" type="submit">Рассчитать</button><span class="tariff-form-status" data-tariff-status role="alert"></span></div></form></div></div></section>'''
+
+def astana_tariff_rows():
+    rows=[]
+    for route in TARIFF_ROUTES:
+        if route['from'] != 'Астана' and route['to'] != 'Астана':
+            continue
+        direction='from-astana' if route['from'] == 'Астана' else 'to-astana'
+        city=route['to'] if route['from'] == 'Астана' else route['from']
+        rows.append(f'''<tr data-direction="{direction}" data-city="{escape(city.lower())}"><td><b>{escape(city)}</b><span>{escape(route['from'])} → {escape(route['to'])}</span></td><td>{money(route['prices'].get(1.5))}</td><td>{money(route['prices'].get(5))}</td><td>{money(route['prices'].get(10))}</td><td>{money(route['prices'].get(20))}</td><td>{escape(route['delivery_time'] or 'по согласованию')}</td><td>{escape(route['vehicle'])}</td><td><a class="button ghost small" href="/tarify/{route['slug']}/">Подробнее</a></td></tr>''')
+    return ''.join(rows)
+
+def tariff_price_table(route):
+    rows=''.join(f'<tr><td>до {str(limit).replace(".", ",")} т</td><td>{money(route["prices"].get(limit))}</td><td>{escape(tariff_vehicle(limit))}</td></tr>' for limit in TARIFF_WEIGHT_LIMITS)
+    return f'<div class="price-table-wrap"><table class="landing-table tariff-route-table"><thead><tr><th>Категория</th><th>Стоимость</th><th>Рекомендуемый транспорт</th></tr></thead><tbody>{rows}</tbody></table></div>'
+
+def tariff_request_form(route_text='выбранному маршруту'):
+    return f'''<form class="landing-form tariff-request-form" data-tariff-request><h2>Получить точный расчёт</h2><p>Оставьте контакт — уточним груз и подтвердим стоимость по маршруту {escape(route_text)}.</p><label class="field">Ваше имя<input name="name" placeholder="Как к вам обращаться?"></label><label class="field">Телефон<input name="phone" placeholder="+7 ..." required></label><label class="field">Груз<input name="cargo" placeholder="Вес, объём, тип груза" required></label><button class="button">Отправить заявку</button><span class="small-note">Форма подготовит письмо менеджеру OQ SPEDITION.</span></form>'''
+
+def result_page_body(origin_slug,destination_slug):
+    route=find_tariff(origin_slug,destination_slug)
+    origin=route['from'] if route else next((c for c,s in TARIFF_CITY_OPTIONS if s == origin_slug), origin_slug)
+    destination=route['to'] if route else next((c for c,s in TARIFF_CITY_OPTIONS if s == destination_slug), destination_slug)
+    route_text=f'{origin} — {destination}'
+    route_json=json.dumps({'from_slug':origin_slug,'to_slug':destination_slug,'from':origin,'to':destination},ensure_ascii=False)
+    price_table=tariff_price_table(route) if route else '<div class="tariff-empty">Точного тарифа для этого направления пока нет. Рассчитаем стоимость индивидуально после заявки.</div>'
+    return f'''<script>window.OQ_RESULT_ROUTE={route_json};</script><section class="route-landing-hero tariff-result-hero"><div class="container hero-landing-grid"><div><p class="eyebrow">ПРЕДВАРИТЕЛЬНЫЙ РАСЧЁТ</p><h1>Стоимость перевозки<br><span>{escape(route_text)}</span></h1><p class="lead">Вес и дополнительные параметры берём из URL. Если тарифа нет, сразу предложим индивидуальный расчёт.</p><div class="tariff-result-card" data-tariff-result><p class="muted">Загрузка расчёта...</p></div><div class="tariff-result-buttons"><a class="button" href="/#quote">Заказать перевозку</a><a class="button ghost" target="_blank" rel="noopener" href="https://wa.me/77088462330?text={escape('Здравствуйте! Нужен расчёт перевозки ' + route_text, quote=True)}">WhatsApp</a></div></div>{tariff_request_form(route_text)}</div></section><section class="section"><div class="container"><p class="eyebrow">ТАРИФЫ ПО МАРШРУТУ</p><h2>Сохранённые ставки</h2>{price_table}<p class="small-note">Цены являются предварительными и могут зависеть от характеристик груза, адресов, режима загрузки, срочности и доступности транспорта.</p></div></section>'''
+
+def tariff_route_body(route):
+    route_text=f'{route["from"]} — {route["to"]}'
+    faq_items=[('Цена окончательная?', 'Нет. На странице указан предварительный тариф. Итоговая стоимость зависит от параметров груза, адресов и условий загрузки.'),('Как считается вес?', 'Вес в килограммах попадает в ближайшую подходящую категорию: до 1,5, 3, 5, 7, 10 или 20 тонн.'),('Что если веса больше 20 тонн?', 'Для грузов тяжелее 20 тонн подготовим индивидуальный расчёт.'),('Можно получить документы?', 'Да, для бизнеса можем подготовить договор, счёт, ТТН и закрывающие документы.')]
+    faq_html=''.join(f'<details><summary>{escape(q)}</summary><p>{escape(a)}</p></details>' for q,a in faq_items)
+    faq_json=json.dumps({'@context':'https://schema.org','@type':'FAQPage','mainEntity':[{'@type':'Question','name':q,'acceptedAnswer':{'@type':'Answer','text':a}} for q,a in faq_items]},ensure_ascii=False)
+    service_json=json.dumps({'@context':'https://schema.org','@type':'Service','name':f'Грузоперевозки {route_text}','provider':{'@type':'Organization','name':'OQ SPEDITION'},'areaServed':'Казахстан','offers':{'@type':'Offer','priceCurrency':'KZT','availability':'https://schema.org/InStock'}},ensure_ascii=False)
+    return f'''<script type="application/ld+json">{faq_json}</script><script type="application/ld+json">{service_json}</script><div class="container crumbs"><a href="/">Главная</a> / <a href="/tarify/">Тарифы</a> / {escape(route_text)}</div><section class="route-landing-hero tariff-route-hero"><div class="container hero-landing-grid"><div><p class="eyebrow">ТАРИФ ПО МАРШРУТУ</p><h1>Тарифы на перевозку<br><span>{escape(route_text)}</span></h1><p class="lead">Предварительные цены в тенге по весовым категориям. Подберём транспорт и подтвердим ставку перед подачей машины.</p><div class="route-badge">{escape(route['delivery_time'] or 'по согласованию')} · {escape(route['vehicle'])}</div><a class="button hero-button" href="#calculator">Рассчитать по весу</a></div>{tariff_request_form(route_text)}</div></section><section class="section"><div class="container"><p class="eyebrow">ТАБЛИЦА ЦЕН</p><h2>Стоимость по весовым категориям</h2>{tariff_price_table(route)}<p class="table-note">Расчёт предварительный. Цена может измениться из-за габаритов, упаковки, режима погрузки, срочности и точных адресов.</p></div></section>{tariff_calculator('Рассчитать этот маршрут', route, True)}<section class="section route-faq"><div class="container narrow"><p class="eyebrow">FAQ</p><h2>Вопросы по тарифу {escape(route_text)}</h2>{faq_html}</div></section>'''
+
+tariffs_body=f'''<div class="container crumbs"><a href="/">Главная</a> / Тарифы</div><section class="hero tariff-hero"><div class="container"><p class="eyebrow">OQ SPEDITION · ТАРИФЫ</p><h1>Тарифы на грузоперевозки по Казахстану</h1><p class="lead">Калькулятор для точного веса и готовая таблица направлений в Астану и из Астаны. Все цены отображаются только в тенге.</p><a class="button" href="#calculator">Рассчитать стоимость</a></div></section>{tariff_calculator()}<section class="section tariff-table-section" id="astana-tariffs"><div class="container"><div class="center-heading"><p class="eyebrow">ГОТОВАЯ ТАБЛИЦА</p><h2>Тарифы на перевозки в Астану и из Астаны</h2><p>Это сохранённые ставки по направлениям, где цены уже есть в тарифной таблице.</p></div><div class="tariff-toolbar"><label class="field">Поиск по городу<input type="search" id="tariffSearch" placeholder="Например, Алматы"></label><div class="tariff-filter" role="group" aria-label="Фильтр направлений"><button class="button ghost active" type="button" data-tariff-direction="all">Все</button><button class="button ghost" type="button" data-tariff-direction="to-astana">В Астану</button><button class="button ghost" type="button" data-tariff-direction="from-astana">Из Астаны</button></div></div><div class="route-table-wrap tariff-table-wrap"><table class="route-table tariff-main-table"><thead><tr><th>Город</th><th>до 1,5 т</th><th>до 5 т</th><th>до 10 т</th><th>до 20 т</th><th>Срок</th><th>Авто</th><th></th></tr></thead><tbody>{astana_tariff_rows()}</tbody></table></div><div class="tariff-empty" id="tariffEmpty" hidden>Направление не найдено. Оставьте заявку — рассчитаем стоимость индивидуально.</div></div></section>'''
+write(Path('tarify/index.html'),shell('Тарифы на грузоперевозки по Казахстану — OQ SPEDITION','Калькулятор стоимости перевозки и таблица тарифов в Астану и из Астаны. Цены в тенге по весовым категориям.','/tarify/',tariffs_body))
+
+for route in TARIFF_ROUTES:
+    route_text=f'{route["from"]} — {route["to"]}'
+    write(Path(f'tarify/{route["slug"]}/index.html'),shell(f'Тарифы {route_text}: стоимость перевозки | OQ SPEDITION',f'Тарифы на перевозку {route_text}: цены до 1,5, 5, 10 и 20 тонн, срок доставки, транспорт и заявка на точный расчёт.','/tarify/'+route['slug']+'/',tariff_route_body(route)))
+
+for origin,origin_slug in TARIFF_CITY_OPTIONS:
+    for destination,destination_slug in TARIFF_CITY_OPTIONS:
+        if origin_slug == destination_slug:
+            continue
+        path=Path(f'tarify/raschet/{origin_slug}-{destination_slug}/index.html')
+        write(path,shell(f'Расчёт перевозки {origin} — {destination} | OQ SPEDITION',f'Предварительный расчёт стоимости перевозки {origin} — {destination} по точному весу груза в тенге.','/tarify/raschet/'+origin_slug+'-'+destination_slug+'/',result_page_body(origin_slug,destination_slug)))
 
 vehicle_cards=''.join(f'<a class="card vehicle-card" href="/avtopark/{v["id"]}/"><span class="tag">{v["category"]}</span><h3>{v["label"]}</h3><p>{v["capacity"]} · {v["size"]}</p><p>{v["body"]} · {", ".join(v["lengths"])}</p><p class="price">{("от "+fmt(v["city_price"])+" ₸ по городу") if v["city_price"] else "Тариф по запросу"}</p></a>' for v in VEHICLES)
 fleet_body=f'<section class="section"><div class="container"><div class="crumbs"><a href="/">Главная</a> / Автопарк</div><p class="eyebrow">ТРАНСПОРТ</p><h1>Подбор машины под груз и маршрут</h1><p class="muted">Выберите грузоподъёмность, тип кузова и размер. Междугородние тарифы показываем на странице выбранного маршрута.</p><div class="service-list">{vehicle_cards}</div><p style="margin-top:24px"><a class="button" href="/gruzoperevozki/mezhgorod/">Выбрать направление</a></p></div></section>'
@@ -254,10 +418,11 @@ pricebody='<section class="section"><div class="container"><div class="crumbs"><
 write(Path('ceny/index.html'),shell('Цены на грузоперевозки по Казахстану — OQ SPEDITION','Ориентировочные тарифы Газели, расстояния и сроки между Алматы и городами Казахстана.','/ceny/',pricebody))
 write(Path('kontakty/index.html'),shell('Контакты OQ SPEDITION','Свяжитесь с OQ SPEDITION, чтобы обсудить перевозку груза по Казахстану.','/kontakty/','<section class="section"><div class="container"><div class="crumbs"><a href="/">Главная</a> / Контакты</div><p class="eyebrow">OQ SPEDITION</p><h1>Контакты</h1><p>Обсудите маршрут и параметры перевозки с нашей командой.</p><p><a class="price" href="tel:+77088462330">+7 708 846 23 30</a></p><p><a href="mailto:logistics@oqspedition.kz">logistics@oqspedition.kz</a></p><a class="button" href="/#quote">Запросить расчёт</a></div></section>'))
 
-paths=['/','/uslugi/','/ceny/','/kontakty/','/biznes/','/avtopark/','/gruzoperevozki/','/gruzoperevozki/mezhgorod/']
+paths=['/','/uslugi/','/ceny/','/tarify/','/kontakty/','/biznes/','/avtopark/','/gruzoperevozki/','/gruzoperevozki/mezhgorod/']
 paths += [f'/uslugi/{s}/' for _,s,_ in SERVICES]
 paths += [f'/avtopark/{v["id"]}/' for v in VEHICLES]
 paths.extend(city_path(a_slug,b_slug) for _,a_slug in CITY_LIST for _,b_slug in CITY_LIST if a_slug!=b_slug)
+paths += [f'/tarify/{route["slug"]}/' for route in TARIFF_ROUTES]
 write(Path('sitemap.xml'),'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(f'<url><loc>{base}{p}</loc></url>' for p in paths)+'</urlset>')
 write(Path('robots.txt'),f'User-agent: *\nAllow: /\nSitemap: {base}/sitemap.xml\n')
 print(f'Generated {len(paths)} indexed pages.')
