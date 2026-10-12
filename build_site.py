@@ -58,11 +58,11 @@ CITY_SLUG={city:slug for city,slug in CITY_LIST}
 def city_path(origin_slug,dest_slug): return f'/gruzoperevozki/mezhgorod/{origin_slug}-{dest_slug}/'
 NAV_ITEMS=[
     ('Грузоперевозки','/gruzoperevozki/',[
-        ('По городу','/gruzoperevozki/'),('Междугородние перевозки','/gruzoperevozki/mezhgorod/'),
-        ('Сборные грузы','/uslugi/sbornye-gruzy/'),('Перевозка грузов для бизнеса','/biznes/')]),
+        ('Междугородние перевозки','/gruzoperevozki/mezhgorod/'),
+        *[(name, f'/uslugi/{slug}/') for name,slug,_ in SERVICES]
+    ]),
     ('Автопарк','/avtopark/',[(v['label'],f'/avtopark/{v["id"]}/') for v in VEHICLES]),
     ('Направления','/gruzoperevozki/mezhgorod/',[(city,city_path('almaty',slug)) for city,slug in CITY_LIST[1:9]]),
-    ('Услуги','/uslugi/',[(name,f'/uslugi/{slug}/') for name,slug,_ in SERVICES]),
     ('Бизнесу','/biznes/',[('Логистика для бизнеса','/biznes/'),('Автопарк','/avtopark/'),('Цены','/ceny/')])
 ]
 def make_nav():
