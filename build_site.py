@@ -7,6 +7,7 @@ import re
 from route_data import CITIES_INFO, SEASONAL, TRANSPORT, PREPARE, QUESTIONS, ROAD_CHECK_INFO
 
 ROOT = Path(__file__).parent
+SITE_PREFIX = '/oq-spedition'
 ROUTES = [
     ('Актау','aktau',2880,1080000,375,'3–4 дня'),('Актобе','aktobe',2185,720000,330,'2–3 дня'),
     ('Астана','astana',1200,400000,333,'1–2 дня'),('Атырау','atyrau',2850,940000,330,'3–4 дня'),
@@ -74,7 +75,7 @@ def make_nav():
     return ''.join(groups)
 nav=make_nav()
 def head(title,description,path):
-     return f'''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101b28"><meta name="description" content="{escape(description, quote=True)}"><link rel="canonical" href="{base}{path}"><meta property="og:type" content="website"><meta property="og:title" content="{escape(title)}"><meta property="og:description" content="{escape(description)}"><title>{escape(title)}</title><link rel="stylesheet" href="/assets/site.css"><link rel="stylesheet" href="/assets/route.css"><link rel="stylesheet" href="/assets/interactions.css"><link rel="stylesheet" href="/assets/mobile.css"><script src="/routes.js" defer></script><script src="/assets/site.js" defer></script></head><body><header class="header"><div class="container header-inner"><a class="brand brand-logo" href="/"><img src="/assets/logo.svg" alt="OQ SPEDITION"></a><button class="mobile-nav-toggle" id="mobileNavToggle" aria-expanded="false" aria-controls="siteNav">Меню ☰</button><nav id="siteNav" aria-label="Основная навигация">{nav}<a class="button nav-quote" href="/#quote">Рассчитать</a></nav></div></header>'''
+     return f'''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101b28"><meta name="description" content="{escape(description, quote=True)}"><link rel="canonical" href="{base}{path}"><meta property="og:type" content="website"><meta property="og:title" content="{escape(title)}"><meta property="og:description" content="{escape(description)}"><title>{escape(title)}</title><link rel="stylesheet" href="/assets/site.css"><link rel="stylesheet" href="/assets/route.css"><link rel="stylesheet" href="/assets/interactions.css"><link rel="stylesheet" href="/assets/mobile.css"><script>window.OQ_BASE_PATH={json.dumps(SITE_PREFIX)};</script><script src="/routes.js" defer></script><script src="/assets/site.js" defer></script></head><body><header class="header"><div class="container header-inner"><a class="brand brand-logo" href="/"><img src="/assets/logo.svg" alt="OQ SPEDITION"></a><button class="mobile-nav-toggle" id="mobileNavToggle" aria-expanded="false" aria-controls="siteNav">Меню ☰</button><nav id="siteNav" aria-label="Основная навигация">{nav}<a class="button nav-quote" href="/#quote">Рассчитать</a></nav></div></header>'''
 def footer():
      return '''<footer class="footer"><div class="container footer-grid"><div><a class="brand brand-logo" href="/"><img src="/assets/logo.svg" alt="OQ SPEDITION"></a><p>Транспортная логистика по Казахстану.</p></div><div><b>Связаться</b><p><a href="tel:+77088462330">+7 708 846 23 30</a></p><p><a href="mailto:logistics@oqspedition.kz">logistics@oqspedition.kz</a></p></div><div><b>Навигация</b><p><a href="/gruzoperevozki/mezhgorod/">Направления и тарифы</a></p><p><a href="/uslugi/">Услуги</a></p></div></div></footer></body></html>'''
 def route_url(slug,reverse=False): return f'/gruzoperevozki/mezhgorod/{slug}-almaty/' if reverse else f'/gruzoperevozki/mezhgorod/almaty-{slug}/'
@@ -101,7 +102,10 @@ def calc(route=None):
 faq='''<section class="section faq"><div class="container"><p class="eyebrow">ВОПРОСЫ</p><h2>Часто спрашивают о междугородней перевозке</h2><details><summary>Цена на странице окончательная?</summary><p>На сайте показан тариф «от» за Газель по направлению. Итоговая стоимость подтверждается после уточнения груза, адресов и условий рейса.</p></details><details><summary>Можно отправить груз в обратном направлении?</summary><p>Да, для маршрутов опубликованы страницы в обе стороны. Стоимость обратной загрузки уточняется по наличию подходящего рейса.</p></details><details><summary>Сколько занимает доставка?</summary><p>Ориентировочный срок указан на странице направления. Фактическое время зависит от маршрута, дорожной обстановки и организации загрузки.</p></details><details><summary>Как рассчитывается цена фуры?</summary><p>Для грузовиков, фур и специальных типов кузова стоимость предоставляется по запросу с учётом параметров перевозки.</p></details></div></section>'''
 
 def write(path,content):
-    target=ROOT/path; target.parent.mkdir(parents=True,exist_ok=True); target.write_text(content,encoding='utf-8')
+    target=ROOT/path; target.parent.mkdir(parents=True,exist_ok=True)
+    if target.suffix == '.html' and SITE_PREFIX:
+        content = content.replace('href="/', f'href="{SITE_PREFIX}/').replace('src="/', f'src="{SITE_PREFIX}/')
+    target.write_text(content,encoding='utf-8')
 
 route_js = '/* Маршрутные тарифы по согласованным исходным данным; маршрутные ставки приоритетнее. */\nwindow.OQ_ROUTES = ' + json.dumps([{'city':c,'slug':s,'km':km,'price':price,'rate':rate,'time':time,'international':s in ('bishkek','tashkent'), 'vehiclePrices':ROUTE_VEHICLE_PRICES.get(s,{} )} for c,s,km,price,rate,time in ROUTES],ensure_ascii=False,indent=2) + ';\nwindow.OQ_VEHICLES = ' + json.dumps(VEHICLES,ensure_ascii=False,indent=2) + ';\n'
 route_js += 'window.OQ_CITIES = ' + json.dumps([{'city':c,'slug':s} for c,s in CITY_LIST],ensure_ascii=False,indent=2) + ';\n'

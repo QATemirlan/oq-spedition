@@ -2,6 +2,8 @@
 (() => {
   const routes = window.OQ_ROUTES || [];
   const vehicles = window.OQ_VEHICLES || [];
+  const basePath = window.OQ_BASE_PATH || '';
+  const sitePath = path => `${basePath}${path}`;
   const money = value => new Intl.NumberFormat('ru-RU').format(value).replace(/\u00a0/g, ' ');
   const from = document.querySelector('#fromCity');
   const to = document.querySelector('#toCity');
@@ -69,7 +71,7 @@
       const direction = `${routeOrigin} → ${routeDestination}`;
       result.innerHTML = `<b>${direction}</b><br>${vehicle.label} · ${vehicle.body}<br><strong>Стоимость — по запросу</strong><br><span class="small-note">Маршрут добавлен. Расстояние, срок и ставка появятся после загрузки тарифной таблицы.</span>`;
       if (quickRoute) quickRoute.value = direction;
-      if (order) order.href = `/?route=${encodeURIComponent(direction)}&vehicle=${encodeURIComponent(vehicle.label)}#quote`;
+       if (order) order.href = `${sitePath('/')}?route=${encodeURIComponent(direction)}&vehicle=${encodeURIComponent(vehicle.label)}#quote`;
       return;
     }
     if (!route || routeOrigin === routeDestination) {
@@ -86,10 +88,10 @@
     result.innerHTML = price != null
       ? `<b>${direction}</b><br>${money(route.km)} км · ${route.time}<br>${vehicle.label} · ${body}<br><strong>от ${money(price)} ₸</strong><br><span class="small-note">Ставка маршрута для этого класса транспорта. Итог подтвердим по параметрам груза.</span>${discountText}`
       : `<b>${direction}</b><br>${money(route.km)} км · ${route.time}<br>${vehicle.label} · ${body}<br><strong>Стоимость — по запросу</strong><br><span class="small-note">Для этого сочетания маршрута и машины опубликованного тарифа нет. Подготовим индивидуальный расчёт.</span>${discountText}`;
-    const routePath = `/gruzoperevozki/mezhgorod/${citySlug(routeOrigin)}-${citySlug(routeDestination)}/`;
+    const routePath = sitePath(`/gruzoperevozki/mezhgorod/${citySlug(routeOrigin)}-${citySlug(routeDestination)}/`);
     if (quickRoute) quickRoute.value = direction;
     if (order) {
-      order.href = `/?route=${encodeURIComponent(direction)}&vehicle=${encodeURIComponent(vehicle.label)}&body=${encodeURIComponent(body)}#quote`;
+      order.href = `${sitePath('/')}?route=${encodeURIComponent(direction)}&vehicle=${encodeURIComponent(vehicle.label)}&body=${encodeURIComponent(body)}#quote`;
       order.dataset.request = `${direction}; ${vehicle.label}; ${body}; ${price != null ? 'ориентир от ' + money(price) + ' ₸' : 'требуется индивидуальный расчёт'}; ${routePath}`;
     }
   }
