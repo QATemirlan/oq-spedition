@@ -157,56 +157,116 @@
     }
     return { route, category, price: null, vehicle: null };
   };
-  document.querySelectorAll('[data-tariff-form]').forEach(form => form.addEventListener('submit', event => {
-    event.preventDefault();
-    const fields = new FormData(form);
-    const fromSlug = fields.get('from');
-    const toSlug = fields.get('to');
-    const weight = Number(fields.get('weight'));
+  document.querySelectorAll('[data-tariff-form]').forEach(form => {
+    const fromSelect = form.querySelector('select[name="from"]');
+    const toSelect = form.querySelector('select[name="to"]');
+    const weightInput = form.querySelector('input[name="weight"]');
+    const submit = form.querySelector('.tariff-calc-submit');
     const status = form.querySelector('[data-tariff-status]');
-    if (!fromSlug || !toSlug) {
-      if (status) status.textContent = 'Выберите город отправления и назначения.';
-      return;
+    const swap = form.querySelector('[data-tariff-swap]');
+    function refreshState() {
+      const weight = Number(weightInput?.value);
+      const ready = Boolean(fromSelect?.value) && Boolean(toSelect?.value) && fromSelect.value !== toSelect.value && Number.isFinite(weight) && weight > 0;
+      if (submit) submit.disabled = !ready;
+      if (status && status.textContent && ready) status.textContent = '';
     }
-    if (fromSlug === toSlug) {
-      if (status) status.textContent = 'Выберите разные города.';
-      return;
-    }
-    if (!Number.isFinite(weight) || weight <= 0) {
-      if (status) status.textContent = 'Укажите вес числом больше нуля.';
-      return;
-    }
-    if (status) status.textContent = 'Открываем расчёт...';
-    const params = new URLSearchParams({ weight: String(Math.round(weight)) });
-    ['cargo_type', 'dimensions', 'urgency', 'loading', 'unloading'].forEach(name => {
-      const value = fields.get(name);
-      if (value) params.set(name, value);
+    [fromSelect, toSelect, weightInput].filter(Boolean).forEach(el => el.addEventListener('input', refreshState));
+    [fromSelect, toSelect].filter(Boolean).forEach(el => el.addEventListener('change', refreshState));
+    if (swap && fromSelect && toSelect) swap.addEventListener('click', () => {
+      const tmp = fromSelect.value;
+      fromSelect.value = toSelect.value;
+      toSelect.value = tmp;
+      refreshState();
     });
-    location.href = `${sitePath(`/tarify/raschet/${fromSlug}-${toSlug}/`)}?${params.toString()}`;
-  }));
-  const tariffSearch = document.querySelector('#tariffSearch');
+    form.querySelectorAll('[data-quick-city]').forEach(button => button.addEventListener('click', () => {
+      const target = button.closest('.tariff-calc-place');
+      const select = target?.querySelector('select');
+      if (!select) return;
+      select.value = button.dataset.quickCity;
+      refreshState();
+    }));
+    refreshState();
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const fromSlug = fromSelect?.value;
+      const toSlug = toSelect?.value;
+      const weight = Number(weightInput?.value);
+      if (!fromSlug || !toSlug) { if (status) status.textContent = 'Выберите город отправления и назначения.'; return; }
+      if (fromSlug === toSlug) { if (status) status.textContent = 'Выберите разные города.'; return; }
+      if (!Number.isFinite(weight) || weight <= 0) { if (status) status.textContent = 'Укажите вес числом больше нуля.'; return; }
+      if (status) status.textContent = 'Открываем расчёт...';
+      const params = new URLSearchParams({ weight: String(Math.round(weight)) });
+      location.href = `${sitePath(`/tarify/raschet/${fromSlug}-${toSlug}/`)}?${params.toString()}`;
+    });
+  });
   const tariffRows = Array.from(document.querySelectorAll('.tariff-main-table tbody tr'));
   const tariffEmpty = document.querySelector('#tariffEmpty');
-  let tariffDirection = 'all';
+  const tariffDropdowns = Array.from(document.querySelectorAll('[data-tariff-dropdown]'));
+  function closeDropdowns(except) {
+    tariffDropdowns.forEach(item => {
+      if (item === except) return;
+      item.classList.remove('is-open');
+      const toggle = item.querySelector('[data-tariff-dropdown-toggle]');
+      const panel = item.querySelector('.tariff-dropdown-panel');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      if (panel) panel.hidden = true;
+    });
+  }
+  tariffDropdowns.forEach(dropdown => {
+    const toggle = dropdown.querySelector('[data-tariff-dropdown-toggle]');
+    const panel = dropdown.querySelector('.tariff-dropdown-panel');
+    const search = dropdown.querySelector('[data-tariff-dropdown-search]');
+    const list = dropdown.querySelector('.tariff-dropdown-list');
+    const label = dropdown.querySelector('[data-tariff-dropdown-label]');
+    const input = dropdown.querySelector('[data-tariff-dropdown-input]');
+    const defaultLabel = label ? label.textContent : 'Все города';
+    if (toggle && panel) toggle.addEventListener('click', () => {
+      const open = !panel.hidden;
+      closeDropdowns(dropdown);
+      panel.hidden = open;
+      dropdown.classList.toggle('is-open', !open);
+      toggle.setAttribute('aria-expanded', String(!open));
+      if (!open && search) { search.value = ''; filterList(''); search.focus(); }
+    });
+    function filterList(text) {
+      if (!list) return;
+      const value = (text || '').trim().toLowerCase();
+      list.querySelectorAll('li').forEach(item => { item.hidden = value !== '' && !item.textContent.toLowerCase().includes(value); });
+    }
+    if (search) search.addEventListener('input', () => filterList(search.value));
+    if (list) list.addEventListener('click', event => {
+      const option = event.target.closest('li');
+      if (!option) return;
+      if (input) input.value = option.dataset.value || '';
+      if (label) label.textContent = option.textContent;
+      dropdown.classList.toggle('is-set', Boolean(option.dataset.value));
+      closeDropdowns();
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      if (panel) panel.hidden = true;
+      filterTariffs();
+    });
+    dropdown.resetTariff = () => { if (input) input.value = ''; if (label) label.textContent = defaultLabel; dropdown.classList.remove('is-set'); };
+  });
+  document.addEventListener('click', event => { if (!event.target.closest('[data-tariff-dropdown]')) closeDropdowns(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape') closeDropdowns(); });
   function filterTariffs() {
     if (!tariffRows.length) return;
-    const text = (tariffSearch?.value || '').trim().toLowerCase();
+    const fromInput = document.querySelector('[data-tariff-dropdown] input[name="from"]');
+    const toInput = document.querySelector('[data-tariff-dropdown] input[name="to"]');
+    const fromValue = fromInput?.value || '';
+    const toValue = toInput?.value || '';
     let visible = 0;
     tariffRows.forEach(row => {
-      const directionOk = tariffDirection === 'all' || row.dataset.direction === tariffDirection;
-      const searchOk = !text || (row.dataset.city || '').includes(text);
-      const show = directionOk && searchOk;
+      const fromOk = !fromValue || row.dataset.from === fromValue;
+      const toOk = !toValue || row.dataset.to === toValue;
+      const show = fromOk && toOk;
       row.hidden = !show;
       if (show) visible += 1;
     });
     if (tariffEmpty) tariffEmpty.hidden = visible !== 0;
   }
-  if (tariffSearch) tariffSearch.addEventListener('input', filterTariffs);
-  document.querySelectorAll('[data-tariff-direction]').forEach(button => button.addEventListener('click', () => {
-    tariffDirection = button.dataset.tariffDirection;
-    document.querySelectorAll('[data-tariff-direction]').forEach(item => item.classList.toggle('active', item === button));
-    filterTariffs();
-  }));
+  const tariffReset = document.querySelector('[data-tariff-reset]');
+  if (tariffReset) tariffReset.addEventListener('click', () => { tariffDropdowns.forEach(d => d.resetTariff && d.resetTariff()); if (tariffEmpty) tariffEmpty.hidden = true; filterTariffs(); });
   const resultBox = document.querySelector('[data-tariff-result]');
   if (resultBox && window.OQ_RESULT_ROUTE) {
     const weight = Number(query.get('weight'));
@@ -234,8 +294,11 @@
   document.querySelectorAll('[data-tariff-request]').forEach(form => form.addEventListener('submit', event => {
     event.preventDefault();
     const fields = new FormData(form);
-    const route = window.OQ_RESULT_ROUTE ? `${window.OQ_RESULT_ROUTE.from} → ${window.OQ_RESULT_ROUTE.to}` : document.querySelector('h1')?.textContent?.replace(/\s+/g, ' ') || 'тарифный маршрут';
-    const text = `Здравствуйте, OQ SPEDITION!\n\nПрошу подготовить точный расчёт.\nМаршрут: ${route}\nИмя: ${fields.get('name') || 'не указано'}\nТелефон: ${fields.get('phone')}\nГруз: ${fields.get('cargo')}`;
+    const typedRoute = (fields.get('route') || '').trim();
+    const route = typedRoute || (window.OQ_RESULT_ROUTE ? `${window.OQ_RESULT_ROUTE.from} → ${window.OQ_RESULT_ROUTE.to}` : document.querySelector('h1')?.textContent?.replace(/\s+/g, ' ') || 'тарифный маршрут');
+    const weight = (fields.get('weight') || '').trim();
+    const cargo = (fields.get('cargo') || '').trim() || weight || 'уточнить';
+    const text = `Здравствуйте, OQ SPEDITION!\n\nПрошу подготовить точный расчёт.\nМаршрут: ${route}\nИмя: ${fields.get('name') || 'не указано'}\nТелефон: ${fields.get('phone')}\nГруз: ${cargo}`;
     location.href = `mailto:logistics@oqspedition.kz?subject=${encodeURIComponent('Точный расчёт тарифа: ' + route)}&body=${encodeURIComponent(text)}`;
   }));
   document.querySelectorAll('.landing-form:not([data-tariff-request])').forEach(form => form.addEventListener('submit', event => {

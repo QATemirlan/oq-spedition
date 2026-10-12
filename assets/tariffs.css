@@ -1,3 +1,76 @@
-.tariff-hero{padding:76px 0 64px;background:linear-gradient(135deg,#101b28 0%,#182b3b 62%,#203f50 100%);color:#fff}.tariff-hero h1,.tariff-route-hero h1,.tariff-result-hero h1{max-width:760px;font-size:clamp(38px,5vw,66px);line-height:1.02;margin:14px 0 20px}.tariff-hero .lead,.tariff-route-hero .lead,.tariff-result-hero .lead{max-width:720px;color:#d9e1e6}.tariff-calculator{background:var(--paper)}.tariff-calc-panel{padding:34px;border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:18px;background:#fff;box-shadow:0 18px 45px #101b2812}.tariff-calc-panel h2{margin:5px 0 8px;font-size:clamp(28px,4vw,44px)}.tariff-form{margin-top:26px}.tariff-form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.tariff-form .field{display:grid;gap:6px}.tariff-form input,.tariff-form select,.tariff-toolbar input{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}.tariff-actions{display:flex;align-items:center;gap:16px;margin-top:20px}.tariff-form-status{color:#a33;font-size:14px;min-height:22px}.tariff-table-section{padding-top:68px}.tariff-toolbar{display:flex;align-items:end;justify-content:space-between;gap:20px;margin:25px 0 18px}.tariff-toolbar .field{display:grid;gap:6px;width:min(360px,100%)}.tariff-filter{display:flex;gap:8px;flex-wrap:wrap}.button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}.button.ghost.active,.button.ghost:hover{background:var(--gold);border-color:var(--gold-dark);color:var(--ink)}.button.small{padding:8px 11px;font-size:12px;white-space:nowrap}.tariff-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff}.tariff-main-table{min-width:1040px}.tariff-main-table td:first-child b,.tariff-main-table td:first-child span{display:block}.tariff-main-table td:first-child span{font-size:12px;color:var(--muted);margin-top:2px}.tariff-empty{padding:20px;border:1px dashed var(--gold-dark);border-radius:12px;background:#fffaf0;color:var(--muted)}.tariff-route-hero,.tariff-result-hero{padding:62px 0 54px;background:linear-gradient(135deg,#101b28,#1d3545);color:#fff}.tariff-route-hero .hero-landing-grid,.tariff-result-hero .hero-landing-grid{align-items:start}.tariff-route-hero .landing-form,.tariff-result-hero .landing-form{background:#fff;color:var(--ink)}.tariff-route-table{min-width:680px}.tariff-result-card{max-width:680px;margin:28px 0 18px;padding:22px;border:1px solid #ffffff40;border-radius:14px;background:#ffffff12}.tariff-result-card dl{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px;margin:0}.tariff-result-card dt{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#b9c7cf}.tariff-result-card dd{margin:0;font-size:20px;font-weight:700}.tariff-result-card dd:nth-of-type(3){color:var(--gold)}.tariff-result-buttons{display:flex;gap:10px;flex-wrap:wrap}.tariff-included{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:22px;padding-top:18px;border-top:1px solid #ffffff2e}.tariff-included b{grid-column:1/-1}.tariff-included span{font-size:13px;padding-left:18px;position:relative;color:#d9e1e6}.tariff-included span:before{content:'+';position:absolute;left:0;color:var(--gold);font-weight:800}.tariff-request-form{box-shadow:0 18px 45px #0000001a}.tariff-route-hero .tariff-request-form,.tariff-result-hero .tariff-request-form{margin-top:0}.tariff-route-hero+.section,.tariff-result-hero+.section{padding-top:58px}.route-faq{background:var(--paper)}
-@media(max-width:900px){.tariff-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tariff-toolbar{align-items:stretch;flex-direction:column}.tariff-toolbar .field{width:100%}}
-@media(max-width:720px){.tariff-hero,.tariff-route-hero,.tariff-result-hero{padding:42px 0 36px}.tariff-hero h1,.tariff-route-hero h1,.tariff-result-hero h1{font-size:36px}.tariff-calc-panel{padding:20px;border-radius:14px}.tariff-form-grid{grid-template-columns:1fr;gap:12px}.tariff-actions{display:block}.tariff-actions .button{width:100%;justify-content:center}.tariff-form-status{display:block;margin-top:10px}.tariff-filter{display:grid;grid-template-columns:repeat(3,1fr)}.tariff-filter .button{padding:10px 6px;font-size:12px}.tariff-result-card dl{grid-template-columns:1fr;gap:10px}.tariff-result-card dd{font-size:18px}.tariff-included{grid-template-columns:1fr}.tariff-included b{grid-column:auto}.tariff-result-buttons .button{width:100%;justify-content:center}.tariff-route-table{min-width:640px}}
+.tariff-hero{padding:76px 0 64px;background:linear-gradient(135deg,#101b28 0%,#182b3b 62%,#203f50 100%);color:#fff}.tariff-hero h1,.tariff-route-hero h1,.tariff-result-hero h1{max-width:760px;font-size:clamp(38px,5vw,66px);line-height:1.02;margin:14px 0 20px}.tariff-hero .lead,.tariff-route-hero .lead,.tariff-result-hero .lead{max-width:720px;color:#d9e1e6}.tariff-calculator{background:var(--paper)}.tariff-calc-panel{padding:34px;border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:18px;background:#fff;box-shadow:0 18px 45px #101b2812}.tariff-calc-panel h2{margin:5px 0 8px;font-size:clamp(28px,4vw,44px)}.tariff-form{margin-top:26px}.tariff-form-status{color:#a33;font-size:14px;min-height:22px}.tariff-table-section{padding-top:68px}.button.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}.button.ghost.active,.button.ghost:hover{background:var(--gold);border-color:var(--gold-dark);color:var(--ink)}.button.small{padding:8px 11px;font-size:12px;white-space:nowrap}.tariff-table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:#fff}.tariff-main-table{min-width:1040px}.tariff-main-table td:first-child b,.tariff-main-table td:first-child span{display:block}.tariff-main-table td:first-child span{font-size:12px;color:var(--muted);margin-top:2px}.tariff-empty{padding:20px;border:1px dashed var(--gold-dark);border-radius:12px;background:#fffaf0;color:var(--muted)}.tariff-route-hero,.tariff-result-hero{padding:62px 0 54px;background:linear-gradient(135deg,#101b28,#1d3545);color:#fff}.tariff-route-hero .hero-landing-grid,.tariff-result-hero .hero-landing-grid{align-items:start}.tariff-route-hero .landing-form,.tariff-result-hero .landing-form{background:#fff;color:var(--ink)}.tariff-route-table{min-width:680px}.tariff-result-card{max-width:680px;margin:28px 0 18px;padding:22px;border:1px solid #ffffff40;border-radius:14px;background:#ffffff12}.tariff-result-card dl{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px;margin:0}.tariff-result-card dt{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#b9c7cf}.tariff-result-card dd{margin:0;font-size:20px;font-weight:700}.tariff-result-card dd:nth-of-type(3){color:var(--gold)}.tariff-result-buttons{display:flex;gap:10px;flex-wrap:wrap}.tariff-included{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:22px;padding-top:18px;border-top:1px solid #ffffff2e}.tariff-included b{grid-column:1/-1}.tariff-included span{font-size:13px;padding-left:18px;position:relative;color:#d9e1e6}.tariff-included span:before{content:'+';position:absolute;left:0;color:var(--gold);font-weight:800}.tariff-request-form{box-shadow:0 18px 45px #0000001a}.tariff-route-hero .tariff-request-form,.tariff-result-hero .tariff-request-form{margin-top:0}.tariff-route-hero+.section,.tariff-result-hero+.section{padding-top:58px}.route-faq{background:var(--paper)}
+
+/* Калькулятор: Откуда / свайп / Куда / Вес */
+.tariff-form-calc{margin-top:30px}
+.tariff-calc-row{display:grid;grid-template-columns:1fr auto 1fr 220px;gap:18px;align-items:start}
+.tariff-calc-place,.tariff-calc-weight{display:grid;gap:8px;min-width:0}
+.field-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.tariff-calc-select,.tariff-calc-input{width:100%;padding:14px 15px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:16px;transition:border-color .18s,box-shadow .18s}
+.tariff-calc-select:focus,.tariff-calc-input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px #d8ad5e33}
+.tariff-quick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.tariff-quick button{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.tariff-quick button:hover{background:var(--paper);border-color:var(--gold)}
+.tariff-quick button:first-of-type{margin-left:0}
+.tariff-swap{align-self:center;margin-top:22px;width:46px;height:46px;border-radius:50%;border:1.5px solid var(--line);background:#fff;color:var(--gold-dark);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .18s,background .18s,border-color .18s}
+.tariff-swap:hover{background:var(--gold);border-color:var(--gold-dark);color:var(--ink);transform:rotate(180deg)}
+.tariff-calc-weight{position:relative}
+.tariff-weight-note{font-size:12px;color:var(--muted)}
+.tariff-calc-actions{display:flex;align-items:center;gap:16px;margin-top:24px}
+.tariff-calc-submit{min-width:200px;justify-content:center}
+.tariff-calc-submit:disabled{opacity:.45;cursor:not-allowed}
+
+/* Фильтр таблицы: два выпадающих списка */
+.tariff-toolbar{margin:25px 0 18px}
+.tariff-filter-row{display:flex;align-items:end;gap:14px;flex-wrap:wrap}
+.tariff-dropdown{position:relative;display:grid;gap:8px;min-width:230px}
+.tariff-dropdown-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:13px 15px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:15px;cursor:pointer;text-align:left;transition:border-color .18s,box-shadow .18s}
+.tariff-dropdown-toggle:hover{border-color:var(--gold)}
+.tariff-dropdown.is-open .tariff-dropdown-toggle{border-color:var(--gold);box-shadow:0 0 0 3px #d8ad5e33}
+.tariff-dropdown-toggle [data-tariff-dropdown-label]{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tariff-dropdown.is-set .tariff-dropdown-toggle{color:var(--ink);font-weight:600}
+.tariff-dropdown-caret{color:var(--gold-dark);font-size:14px;transition:transform .18s}
+.tariff-dropdown.is-open .tariff-dropdown-caret{transform:rotate(180deg)}
+.tariff-dropdown-panel{position:absolute;top:calc(100% + 6px);left:0;z-index:40;width:100%;min-width:260px;padding:12px;border:1px solid var(--line);border-top:2px solid var(--gold);border-radius:12px;background:#fff;box-shadow:0 18px 45px #101b2826}
+.tariff-dropdown-panel[hidden]{display:none}
+.tariff-dropdown-search{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-size:14px;margin-bottom:8px}
+.tariff-dropdown-search:focus{outline:none;border-color:var(--gold)}
+.tariff-dropdown-list{list-style:none;margin:0;padding:0;max-height:260px;overflow-y:auto}
+.tariff-dropdown-list li{padding:10px 12px;border-radius:7px;font-size:14px;cursor:pointer}
+.tariff-dropdown-list li:hover,.tariff-dropdown-list li:focus-visible{background:var(--paper);color:var(--gold-dark)}
+.tariff-reset{align-self:end;white-space:nowrap}
+
+/* Как проходят перевозки с нами */
+.tariff-steps{background:#fff}
+.tariff-steps .steps-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:34px}
+.tariff-steps .steps-grid article{padding:24px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 8px 28px #101b2810}
+.tariff-steps .steps-grid h3{margin:14px 0 8px;font-size:19px}
+.tariff-steps .steps-grid p{margin:0;color:var(--muted);font-size:15px}
+.tariff-steps .step-icon{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#101b28,#1d3545);color:var(--gold);font-size:22px;font-weight:800}
+
+/* Форма заявки */
+.tariff-request-cta{background:var(--paper)}
+.tariff-lead-panel{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.4fr);gap:30px;align-items:center;padding:34px;border:1px solid var(--line);border-top:4px solid var(--gold);border-radius:18px;background:#fff;box-shadow:0 18px 45px #101b2814}
+.tariff-lead-copy h2{margin:6px 0 10px;font-size:clamp(24px,3vw,34px)}
+.tariff-lead-copy p{color:var(--muted);margin:0}
+.tariff-lead-form{display:block}
+.tariff-lead-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px 14px}
+.tariff-lead-fields .field{display:grid;gap:6px;font-size:13px;color:var(--muted)}
+.tariff-lead-fields input{width:100%;padding:12px 13px;border:1.5px solid var(--line);border-radius:9px;background:#fff;color:var(--ink);font-size:15px;transition:border-color .18s,box-shadow .18s}
+.tariff-lead-fields input:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px #d8ad5e33}
+.tariff-lead-actions{display:flex;align-items:center;gap:14px;margin-top:16px}
+.tariff-lead-actions .button{justify-content:center}
+.tariff-lead-actions .small-note{color:var(--muted);font-size:12px}
+
+/* Популярные направления */
+.tariff-popular{background:linear-gradient(135deg,#101b28,#1d3545);color:#fff}
+.tariff-popular h2{color:#fff}
+.tariff-popular .center-heading p{color:#cbd5df}
+.tariff-popular .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:30px}
+.tariff-popular .card{background:#ffffff10;border:1px solid #ffffff26;color:#fff}
+.tariff-popular .card h3{color:#fff}
+.tariff-popular .card .price{color:var(--gold)}
+.tariff-popular .card .small-note{color:#cbd5df}
+.tariff-popular .button{background:var(--gold);color:var(--ink);border-color:var(--gold-dark)}
+
+@media(max-width:900px){.tariff-calc-row{grid-template-columns:1fr auto 1fr;gap:14px}.tariff-calc-weight{grid-column:1/-1}.tariff-swap{grid-row:1;grid-column:2}.tariff-filter-row{flex-direction:column;align-items:stretch}.tariff-dropdown{min-width:0;width:100%}.tariff-dropdown-panel{min-width:0;width:100%}.tariff-reset{align-self:stretch}.tariff-steps .steps-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tariff-popular .grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tariff-lead-panel{grid-template-columns:1fr;gap:20px}}
+@media(max-width:720px){.tariff-hero,.tariff-route-hero,.tariff-result-hero{padding:42px 0 36px}.tariff-hero h1,.tariff-route-hero h1,.tariff-result-hero h1{font-size:36px}.tariff-calc-panel{padding:20px;border-radius:14px}.tariff-calc-row{grid-template-columns:1fr;gap:12px}.tariff-swap{grid-row:auto;grid-column:auto;justify-self:center;margin:2px 0}.tariff-calc-actions{display:block}.tariff-calc-submit{width:100%}.tariff-form-status{display:block;margin-top:10px}.tariff-result-card dl{grid-template-columns:1fr;gap:10px}.tariff-result-card dd{font-size:18px}.tariff-included{grid-template-columns:1fr}.tariff-included b{grid-column:auto}.tariff-result-buttons .button{width:100%;justify-content:center}.tariff-route-table{min-width:640px}.tariff-steps .steps-grid{grid-template-columns:1fr}.tariff-popular .grid{grid-template-columns:1fr}.tariff-popular .grid .card{display:block}.tariff-lead-panel{padding:20px;border-radius:14px}.tariff-lead-fields{grid-template-columns:1fr}.tariff-lead-actions{display:block}.tariff-lead-actions .button{width:100%}.tariff-lead-actions .small-note{display:block;margin-top:10px}}
