@@ -59,7 +59,7 @@ def city_path(origin_slug,dest_slug): return f'/gruzoperevozki/mezhgorod/{origin
 NAV_ITEMS=[
     ('Грузоперевозки','/gruzoperevozki/',[
         ('Междугородние перевозки','/gruzoperevozki/mezhgorod/'),
-        *[(name, f'/uslugi/{slug}/') for name,slug,_ in SERVICES]
+        *[(name, f'/uslugi/{slug}/') for name,slug,_ in SERVICES if slug != 'mezhgorod']
     ]),
     ('Автопарк','/avtopark/',[(v['label'],f'/avtopark/{v["id"]}/') for v in VEHICLES]),
     ('Направления','/gruzoperevozki/mezhgorod/',[(city,city_path('almaty',slug)) for city,slug in CITY_LIST[1:9]]),
